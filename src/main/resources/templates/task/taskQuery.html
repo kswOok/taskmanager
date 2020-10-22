@@ -1,0 +1,47 @@
+
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" >
+<head>
+    <meta charset="UTF-8">
+    <title>数据表格页面</title>
+    <link href="http://libs.baidu.com/bootstrap/3.0.3/css/bootstrap.min.css" rel="stylesheet">
+    <script src="http://code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
+    <script src="http://libs.baidu.com/bootstrap/3.0.3/js/bootstrap.min.js"></script>
+    <style>
+    table{table-layout:fixed;margin-left:10px}
+    td{word-break:break-all;vertical-align:middle;}
+
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <div class="row">
+        <table class="table table-hover table-bordered"style="width:98%" >
+            <thead>
+            <tr class="success">
+                <th>任务链接</th>
+                <th>目标数量</th>
+                <th>当前数量</th>
+                <th>端类型</th>
+                <th>地理信息</th>
+                <th>开始时间</th>
+                <th>结束时间</th>
+            </tr>
+            </thead>
+            <tr th:each="table_item:${tasks}">
+                <td style="vertical-align: middle; width:40%" th:text="${table_item.url}" ></td>
+                <td style="vertical-align: middle;" th:text="${table_item.quantity}"></td>
+                <td style="vertical-align: middle;" th:text="${table_item.progress}"></td>
+                <td style="vertical-align: middle;" th:text="${table_item.clientName}"></td>
+                <td style="vertical-align: middle;" th:text="${table_item.cityContent}"></td>
+                <td style="vertical-align: middle;" th:text="${table_item.start}"></td>
+                <td style="vertical-align: middle;" th:text="${table_item.end}"></td>
+            </tr>
+        </table>
+    </div>
+</div>
+<script type="text/javascript">
+
+</script>
+</body>
+</html>

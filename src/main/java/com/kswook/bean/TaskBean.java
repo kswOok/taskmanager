@@ -36,11 +36,15 @@ public class TaskBean {
     public String aid;
 
 
-    @JsonProperty(value = "定向城市")
-    public String city;
+//    @JsonProperty(value = "定向城市")
+//    public String city;
     public String taskKey;
     public String channel;
     public String version;
+
+
+    public ArrayList<String> region;
+    public ArrayList<String> city;
 
 
     @JsonProperty(value = "移动端")
@@ -69,6 +73,12 @@ public class TaskBean {
 
     public String thirdXpath = null;
 
+
+    public String clientName = "";
+
+    public String cityContent = "";
+
+    public Integer reDealCount =null;
 
     @JsonProperty(value = "结束时间")
     public String end = "";

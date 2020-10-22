@@ -10,6 +10,7 @@ import okhttp3.Request;
 import okio.*;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.ModelAndView;
 
 import java.io.File;
 import java.io.IOException;
@@ -108,8 +109,9 @@ public class HelloController {
 
 
     @RequestMapping(path = "/task/current", method = RequestMethod.GET)
-    public List<TaskBean> current(@RequestParam(value = "type", required = false) String type
+    public ModelAndView current(@RequestParam(value = "type", required = false) String type, ModelAndView model
     ) {
+        model.setViewName("task/taskQuery");
         Request request = null;
         if ("ws".equals(type)) {
             request = new Request.Builder().url("http://129.204.28.211/tasksws.json").build();
@@ -134,10 +136,46 @@ public class HelloController {
             for (TaskBean taskBean : taskBeans) {
                 try {
                     if (taskBean.isEffect()) {
+                        if (taskBean.isMobile != null && taskBean.isMobile) {
+                            taskBean.clientName = "移动App";
+                        } else if (taskBean.isPC != null && taskBean.isPC) {
+                            taskBean.clientName = "PC端";
+                        }
+                        if (!StringUtils.isEmpty(taskBean.uaKey) && taskBean.uaKey.contains("MicroMessenger")) {
+                            taskBean.clientName = "微信";
+                        }
+
+                        if (taskBean.city != null && !taskBean.city.isEmpty()) {
+                            taskBean.cityContent = "城市:";
+                            taskBean.cityContent += JSONArray.toJSONString(taskBean.city);
+
+                        }
+                        if (taskBean.region != null && !taskBean.region.isEmpty()) {
+                            taskBean.cityContent = "省份:";
+                            taskBean.cityContent += JSONArray.toJSONString(taskBean.region);
+                        }
+                        if (StringUtils.isEmpty(taskBean.cityContent)) {
+                            taskBean.cityContent = "全国";
+                        }
+
+                        if (taskBean.reDealCount != null) {
+                            taskBean.quantity = taskBean.quantity * taskBean.reDealCount;
+                        }
+
+                        String taskurl = "";
                         if (taskBean.url != null && !taskBean.url.contains("TaskSelfFire")) {
-                            resultTask.add(taskBean);
+                            taskurl = taskBean.url;
                         } else if (taskBean.urls != null && !taskBean.urls.isEmpty()) {
+                            taskurl = taskBean.urls.get(0);
+                        }
+
+                        if (!StringUtils.isEmpty(taskurl)) {
                             resultTask.add(taskBean);
+                            for (TaskResultBean taskResultBean : lastResult) {
+                                if (taskurl.equals(taskResultBean.tag)) {
+                                    taskBean.progress = taskResultBean.count;
+                                }
+                            }
                         }
                     }
                 } catch (Exception e) {
@@ -145,17 +183,19 @@ public class HelloController {
                 }
             }
             if (!resultTask.isEmpty()) {
-                return resultTask;
+                model.addObject("tasks", resultTask);
+                return model;
             }
         }
-        return null;
+        return model;
     }
 
 
     @RequestMapping(path = "/task/next", method = RequestMethod.GET)
-    public List<TaskBean> next(@RequestParam(value = "type", required = false) String type) {
+    public ModelAndView next(@RequestParam(value = "type", required = false) String type, ModelAndView model
+    ) {
 //        Request request = new Request.Builder().url("http://127.0.0.1/tasks.json").build();
-
+        model.setViewName("task/taskQuery");
         Request request = null;
         if ("ws".equals(type)) {
             request = new Request.Builder().url("http://129.204.28.211/tasksws.json").build();
@@ -177,6 +217,32 @@ public class HelloController {
             for (TaskBean taskBean : taskBeans) {
                 try {
                     if (taskBean.isNextDayEffect()) {
+                        if (taskBean.isMobile != null && taskBean.isMobile) {
+                            taskBean.clientName = "移动App";
+                        } else if (taskBean.isPC != null && taskBean.isPC) {
+                            taskBean.clientName = "PC端";
+                        }
+                        if (!StringUtils.isEmpty(taskBean.uaKey) && taskBean.uaKey.contains("MicroMessenger")) {
+                            taskBean.clientName = "微信";
+                        }
+
+                        if (taskBean.city != null && !taskBean.city.isEmpty()) {
+                            taskBean.cityContent = "城市:";
+                            taskBean.cityContent += JSONArray.toJSONString(taskBean.city);
+
+                        }
+                        if (taskBean.region != null && !taskBean.region.isEmpty()) {
+                            taskBean.cityContent = "省份:";
+                            taskBean.cityContent += JSONArray.toJSONString(taskBean.region);
+                        }
+                        if (StringUtils.isEmpty(taskBean.cityContent)) {
+                            taskBean.cityContent = "全国";
+                        }
+
+                        if (taskBean.reDealCount != null) {
+                            taskBean.quantity = taskBean.quantity * taskBean.reDealCount;
+                        }
+
                         if (taskBean.url != null && !taskBean.url.contains("TaskSelfFire")) {
                             resultTask.add(taskBean);
                         } else if (taskBean.urls != null && !taskBean.urls.isEmpty()) {
@@ -188,10 +254,11 @@ public class HelloController {
                 }
             }
             if (!resultTask.isEmpty()) {
-                return resultTask;
+                model.addObject("tasks", resultTask);
+                return model;
             }
         }
-        return null;
+        return model;
     }
 
     public static String readFile(String path) {
