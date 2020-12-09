@@ -8,6 +8,7 @@ import com.kswook.bean.TaskResultBean;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okio.*;
+import org.apache.commons.lang3.time.FastDateFormat;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
@@ -16,14 +17,20 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 @RestController
 @CrossOrigin
 public class HelloController {
 
-    static JSONObject task = null;
+    public static JSONObject task = null;
+
+
+    public static FastDateFormat dateFormat = FastDateFormat.getInstance("dd_MM_yyyy_HH:mm:ss", Locale.US);
 
     public static final String taskLYL = "./task/lyl.txt";
+    public static final String ipCitys = "./taskConfig/ipcitys.txt";
+    public static final String ipRegion = "./taskConfig/ipRegion.txt";
     public static final String taskDG = "./task/dg.txt";
 
     public static List<TaskResultBean> lastResult = new ArrayList<>();
@@ -33,7 +40,7 @@ public class HelloController {
     public static final OkHttpClient client = new OkHttpClient();
 
     @RequestMapping(path = "/task/query", method = RequestMethod.GET)
-    public ReturnData index(@RequestParam String type) {
+    public synchronized ReturnData index(@RequestParam String type) {
         String lylTaskContent = readFile(taskLYL);
         String dgTaskContent = readFile(taskDG);
         List<TaskBean> taskBeans = new ArrayList<>();
@@ -50,7 +57,7 @@ public class HelloController {
     }
 
     @RequestMapping(path = "/task/modify", method = RequestMethod.POST)
-    public String modify(@RequestBody List<TaskBean> taskBeans, @RequestParam String type) {
+    public synchronized String modify(@RequestBody List<TaskBean> taskBeans, @RequestParam String type) {
         String taskContent = JSONArray.toJSONString(taskBeans);
         if ("LYL".equals(type)) {
             writeFile(taskLYL, taskContent);
@@ -61,7 +68,7 @@ public class HelloController {
     }
 
     @RequestMapping(path = "/task/commit", method = RequestMethod.POST)
-    public String commit(@RequestBody List<TaskResultBean> taskBeans) {
+    public synchronized String commit(@RequestBody List<TaskResultBean> taskBeans) {
         if (lastResult.isEmpty()) {
             String localLastResult = readFile(TaskResult);
             if (!StringUtils.isEmpty(localLastResult)) {
@@ -89,7 +96,10 @@ public class HelloController {
     }
 
     @RequestMapping(path = "/task/clearResult", method = RequestMethod.GET)
-    public String clearResult() {
+    public synchronized String clearResult() {
+        String data = JSONArray.toJSONString(lastResult);
+        Utils.sendEmail("任务被重置",data);
+        writeFile("./task/result_"+dateFormat.format(System.currentTimeMillis())+".txt", data);
         lastResult.clear();
         writeFile(TaskResult, "");
         return JSONArray.toJSONString(lastResult);
@@ -97,7 +107,7 @@ public class HelloController {
 
 
     @RequestMapping(path = "/task/queryResult", method = RequestMethod.GET)
-    public ReturnData queryResult() {
+    public synchronized ReturnData queryResult() {
         if (lastResult.isEmpty()) {
             String localLastResult = readFile(TaskResult);
             if (!StringUtils.isEmpty(localLastResult)) {
@@ -109,7 +119,7 @@ public class HelloController {
 
 
     @RequestMapping(path = "/task/current", method = RequestMethod.GET)
-    public ModelAndView current(@RequestParam(value = "type", required = false) String type, ModelAndView model
+    public synchronized ModelAndView current(@RequestParam(value = "type", required = false) String type, ModelAndView model
     ) {
         model.setViewName("task/taskQuery");
         Request request = null;
@@ -192,7 +202,7 @@ public class HelloController {
 
 
     @RequestMapping(path = "/task/next", method = RequestMethod.GET)
-    public ModelAndView next(@RequestParam(value = "type", required = false) String type, ModelAndView model
+    public synchronized ModelAndView next(@RequestParam(value = "type", required = false) String type, ModelAndView model
     ) {
 //        Request request = new Request.Builder().url("http://127.0.0.1/tasks.json").build();
         model.setViewName("task/taskQuery");
