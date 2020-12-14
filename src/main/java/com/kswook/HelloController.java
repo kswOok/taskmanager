@@ -13,6 +13,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
 
+import javax.servlet.http.HttpServletRequest;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -33,7 +34,7 @@ public class HelloController {
     public static final String ipRegion = "./taskConfig/ipRegion.txt";
     public static final String taskDG = "./task/dg.txt";
 
-    public static List<TaskResultBean> lastResult = new ArrayList<>();
+    public static volatile List<TaskResultBean> lastResult = new ArrayList<>();
 
     public static final String TaskResult = "./task/result.txt";
 
@@ -41,8 +42,8 @@ public class HelloController {
 
     @RequestMapping(path = "/task/query", method = RequestMethod.GET)
     public synchronized ReturnData index(@RequestParam String type) {
-        String lylTaskContent = readFile(taskLYL);
-        String dgTaskContent = readFile(taskDG);
+        String lylTaskContent = Utils.readFile(taskLYL);
+        String dgTaskContent = Utils.readFile(taskDG);
         List<TaskBean> taskBeans = new ArrayList<>();
         if (!StringUtils.isEmpty(lylTaskContent)) {
             taskBeans.addAll(JSONArray.parseArray(lylTaskContent, TaskBean.class));
@@ -60,9 +61,9 @@ public class HelloController {
     public synchronized String modify(@RequestBody List<TaskBean> taskBeans, @RequestParam String type) {
         String taskContent = JSONArray.toJSONString(taskBeans);
         if ("LYL".equals(type)) {
-            writeFile(taskLYL, taskContent);
+            Utils.writeFile(taskLYL, taskContent);
         } else if ("ALL".equals(type)) {
-            writeFile(taskDG, taskContent);
+            Utils.writeFile(taskDG, taskContent);
         }
         return taskContent;
     }
@@ -70,7 +71,7 @@ public class HelloController {
     @RequestMapping(path = "/task/commit", method = RequestMethod.POST)
     public synchronized String commit(@RequestBody List<TaskResultBean> taskBeans) {
         if (lastResult.isEmpty()) {
-            String localLastResult = readFile(TaskResult);
+            String localLastResult = Utils.readFile(TaskResult);
             if (!StringUtils.isEmpty(localLastResult)) {
                 lastResult = JSONArray.parseArray(localLastResult, TaskResultBean.class);
             }
@@ -91,25 +92,23 @@ public class HelloController {
                 lastResult.add(taskBeans.get(i));
             }
         }
-        writeFile(TaskResult, JSONArray.toJSONString(lastResult));
+        Utils.writeFile(TaskResult, JSONArray.toJSONString(lastResult));
         return JSONArray.toJSONString(lastResult);
     }
 
     @RequestMapping(path = "/task/clearResult", method = RequestMethod.GET)
-    public synchronized String clearResult() {
-        String data = JSONArray.toJSONString(lastResult);
-        Utils.sendEmail("任务被重置",data);
-        writeFile("./task/result_"+dateFormat.format(System.currentTimeMillis())+".txt", data);
-        lastResult.clear();
-        writeFile(TaskResult, "");
-        return JSONArray.toJSONString(lastResult);
+    public synchronized String clearResult(HttpServletRequest httpServletRequest) {
+        String ip = Utils.getIpAddr(httpServletRequest);
+        String osAndBrowserInfo = Utils.getOsAndBrowserInfo(httpServletRequest);
+        Utils.sendEmail("任务被某东西重置", osAndBrowserInfo + "======" + ip);
+        return "";
     }
 
 
     @RequestMapping(path = "/task/queryResult", method = RequestMethod.GET)
     public synchronized ReturnData queryResult() {
         if (lastResult.isEmpty()) {
-            String localLastResult = readFile(TaskResult);
+            String localLastResult = Utils.readFile(TaskResult);
             if (!StringUtils.isEmpty(localLastResult)) {
                 lastResult = JSONArray.parseArray(localLastResult, TaskResultBean.class);
             }
@@ -270,39 +269,5 @@ public class HelloController {
         }
         return model;
     }
-
-    public static String readFile(String path) {
-        String content = "";
-        try {
-            File file = new File(path);
-            if (!file.exists()) {
-                return "";
-            }
-            Source source = Okio.source(file);
-            BufferedSource bufferedSource = Okio.buffer(source);
-            content = bufferedSource.readUtf8();
-            bufferedSource.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return content;
-    }
-
-    public static void writeFile(String path, String content) {
-        try {
-            File file = new File(path);
-            if (!file.exists()) {
-                file.createNewFile();
-            }
-            Sink sink = Okio.sink(file);
-            BufferedSink bufferedSink = Okio.buffer(sink);
-            bufferedSink.writeUtf8(content);
-            bufferedSink.flush();
-            bufferedSink.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
 
 }
