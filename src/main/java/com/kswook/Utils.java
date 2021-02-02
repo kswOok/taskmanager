@@ -3,6 +3,7 @@ package com.kswook;
 import com.alibaba.fastjson.JSONArray;
 import com.sun.mail.util.MailSSLSocketFactory;
 import okio.*;
+import org.apache.commons.lang3.time.FastDateFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -11,10 +12,13 @@ import org.springframework.stereotype.Component;
 import javax.mail.*;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
+import javax.rmi.CORBA.Util;
 import javax.servlet.http.HttpServletRequest;
 import java.io.File;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.util.Date;
+import java.util.Locale;
 import java.util.Properties;
 
 @Component
@@ -25,7 +29,8 @@ public class Utils {
     @Scheduled(cron = "0 0 0/1 * * ?")
     public void scheduled1() {
         String data = JSONArray.toJSONString(HelloController.lastResult);
-        Utils.sendEmail("任务数据暂存",data);
+        Utils.sendEmail("任务数据暂存", data);
+        checkEmail();
     }
 
     @Scheduled(cron = "0 0 00 * * ?")
@@ -171,7 +176,7 @@ public class Utils {
         return os + " --- " + browser;
     }
 
-    public  synchronized static  String readFile(String path) {
+    public synchronized static String readFile(String path) {
         String content = "";
         try {
             File file = new File(path);
@@ -205,4 +210,81 @@ public class Utils {
     }
 
 
+    public void checkEmail() {
+        try {
+            String USER = "kangshouwei@douguo.com"; // 用户名
+            String PASSWORD = "ksw680712"; // 密码
+            String MAIL_SERVER_HOST = "imap.exmail.qq.com"; // 邮箱服务器
+            // 创建一个有具体连接信息的Properties对象
+            Properties prop = new Properties();
+            prop.setProperty("mail.debug", "false");
+            prop.setProperty("mail.store.protocol", "imap");
+            prop.setProperty("mail.imap.host", MAIL_SERVER_HOST);
+            // 1、创建session
+            Session session = Session.getInstance(prop);
+            // 2、通过session得到Store对象
+            Store store = session.getStore();
+            // 3、连上邮件服务器
+            store.connect(MAIL_SERVER_HOST, USER, PASSWORD);
+            // 4、获得邮箱内的邮件夹
+            Folder folder = store.getFolder("收件箱");
+            folder.open(Folder.READ_WRITE);
+            // 获得邮件夹Folder内的所有邮件Message对象
+            Message[] messages = folder.getMessages(folder.getMessageCount() - (10
+                    ), folder.getMessageCount()
+            );
+            FastDateFormat dateFormat = FastDateFormat.getInstance("yyyy-MM-dd", Locale.US);
+            for (int i = 0; i < messages.length; i++) {
+                String subject = messages[i].getSubject();
+                if (subject.contains("广告效果分时监控_9点_" + dateFormat.format(new Date()))) {
+                    String contents = messages[i].getContent().toString();
+                    if (contents.contains("WARNING")) {
+                        Utils.forwardMail(messages[i]);
+                        Utils.sendEmail("任务异常请检查","请检查任务");
+                    }
+                }
+            }
+            // 5、关闭
+            folder.close(false);
+            store.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void forwardMail(Message message) {
+        // 发件人电子邮箱
+        // 指定发送邮件的主机为 smtp.qq.com
+        // 设置邮件服务器
+        properties.setProperty("mail.smtp.host", EmailHost);
+        properties.put("mail.smtp.auth", "true");
+        MailSSLSocketFactory sf = null;
+        try {
+            sf = new MailSSLSocketFactory();
+        } catch (GeneralSecurityException e) {
+            e.printStackTrace();
+        }
+        sf.setTrustAllHosts(true);
+        properties.put("mail.smtp.ssl.enable", "true");
+        properties.put("mail.smtp.ssl.socketFactory", sf);
+        // 获取默认session对象
+        Session session = Session.getDefaultInstance(properties, new Authenticator() {
+            public PasswordAuthentication getPasswordAuthentication() {
+                return new PasswordAuthentication(fromEmail, emailPassword); //发件人邮件用户名、密码
+            }
+        });
+
+        try {
+            Message forward = new MimeMessage(session);
+            forward.setSubject(message.getSubject());
+            forward.setFrom(new InternetAddress(fromEmail));
+            forward.addRecipient(Message.RecipientType.TO, new InternetAddress(toEmail));
+            forward.setSentDate(new Date());
+            forward.setContent(message.getContent(), message.getContentType());
+            // 发送消息
+            Transport.send(forward);
+        } catch (Exception mex) {
+            mex.printStackTrace();
+        }
+    }
 }
